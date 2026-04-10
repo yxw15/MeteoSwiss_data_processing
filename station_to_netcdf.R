@@ -1,178 +1,218 @@
 setwd("/dss/dsshome1/0D/ge35qej2")
 
-# Load required libraries
-library(ncdf4)
 library(dplyr)
 library(tidyr)
+library(readr)
+library(ncdf4)
 library(lubridate)
 
-# Read the data
-daily_filled <- read.csv("MeteoSwiss_station/all_10_stations_filled_19910101_to_20251231.csv")
-daily_filled_report <- read.csv("MeteoSwiss_station/all_stations_fill_source_report.csv")
-
-# Set parameters
-target_lat <- 47.439
-target_lon <- 7.776
-soil_type <- 6  # Soil type number
-
-# Define the mapping between filled_data columns and NetCDF files
-variable_mapping <- list(
-  temp = list(
-    file = "MeteoSwiss_station_to_netcdf/temp_mean_1991_2024.nc",
-    variable_name = "temp",
-    data_column = "Air.temperature.2.m.above.ground..daily.mean",
-    units = "K",
-    long_name = "air_temperature"
-  ),
-  min_temp = list(
-    file = "MeteoSwiss_station_to_netcdf/temp_min_1991_2024.nc",
-    variable_name = "min_temp",
-    data_column = "Air.temperature.2.m.above.ground..daily.minimum",
-    units = "K",
-    long_name = "air_temperature_min"
-  ),
-  max_temp = list(
-    file = "MeteoSwiss_station_to_netcdf/temp_max_1991_2024.nc",
-    variable_name = "max_temp",
-    data_column = "Air.temperature.2.m.above.ground..daily.maximum",
-    units = "K",
-    long_name = "air_temperature_max"
-  ),
-  prec = list(
-    file = "MeteoSwiss_station_to_netcdf/prec_1991_2024.nc",
-    variable_name = "prec",
-    data_column = "Precipitation; daily total 0 UTC - 0 UTC",
-    units = "kg m-2",
-    long_name = "precipitation_amount"
-  ),
-  insol = list(
-    file = "MeteoSwiss_station_to_netcdf/insol_1991_2024.nc",
-    variable_name = "insol",
-    data_column = "Global.radiation..daily.mean",
-    units = "W m-2",
-    long_name = "surface_downwelling_shortwave_flux"
-  ),
-  wind = list(
-    file = "MeteoSwiss_station_to_netcdf/wind_1991_2024.nc",
-    variable_name = "wind_speed",
-    data_column = "Wind.speed.scalar..daily.mean.in.m.s",
-    units = "m s-1",
-    long_name = "wind_speed"
-  ),
-  relhum = list(
-    file = "MeteoSwiss_station_to_netcdf/relhum_1991_2024.nc",
-    variable_name = "rhum",
-    data_column = "Relative.air.humidity.2.m.above.ground..daily.mean",
-    units = "1",
-    long_name = "relative_humidity"
-  ),
-  precip = list(
-    file = "MeteoSwiss_station_to_netcdf/precip_1991_2024.nc",
-    variable_name = "rhum",
-    data_column = "Precipitation..daily.total.0.UTC...0.UTC",
-    units = "kg m-2",
-    long_name = "precipitation_amount"
-  )
+# ============================================================
+# 1) Load data
+# ============================================================
+daily_filtered <- read.csv(
+  "MeteoSwiss_station/all_filtered_19910101_to_20251231.csv"
 )
 
-# Function to create NetCDF file for a variable
-create_netcdf <- function(data, var_info, date_column = "date") {
-  
-  # Parse dates
-  dates <- as.Date(data[[date_column]])
-  time_vals <- as.numeric(difftime(dates, as.Date("1991-01-01"), units = "days"))
-  
-  # Define dimensions
-  time_dim <- ncdim_def(
-    name = "time",
-    units = "days since 1991-01-01",
-    vals = time_vals,
-    calendar = "standard",
-    unlim = TRUE
+daily_filtered <- daily_filtered %>%
+  mutate(
+    date_day = as.Date(date_day),
+    time = as.POSIXct(date_day, tz = "UTC")
   )
-  
-  lat_dim <- ncdim_def(
-    name = "latitude",
-    units = "degrees_north",
-    vals = target_lat,
-    longname = "latitude"
+
+# ============================================================
+# 2) Build station table
+# ============================================================
+stations <- daily_filtered %>%
+  group_by(station_abbr) %>%
+  summarise(
+    lat = first(primary_station_lat),
+    lon = first(primary_station_lon),
+    alt = first(primary_station_alt_m),
+    .groups = "drop"
+  ) %>%
+  arrange(station_abbr) %>%
+  mutate(landid = row_number())
+
+# ============================================================
+# 3) Join landid
+# ============================================================
+daily_filtered <- daily_filtered %>%
+  left_join(
+    stations %>% select(station_abbr, landid),
+    by = "station_abbr"
   )
+
+# ============================================================
+# 4) Time axis
+# ============================================================
+time_origin <- as.POSIXct("1991-01-01 00:00:00", tz = "UTC")
+all_dates <- sort(unique(daily_filtered$date_day))
+time_num <- as.numeric(difftime(as.POSIXct(all_dates, tz = "UTC"), time_origin, units = "days"))
+
+ntime <- length(all_dates)
+nland <- nrow(stations)
+
+# ============================================================
+# 5) Metadata & Easy Variable Names
+# ============================================================
+var_info <- data.frame(
+  original_col = c(
+    "Air.temperature.2.m.above.ground..daily.mean",
+    "Air.temperature.2.m.above.ground..daily.maximum",
+    "Air.temperature.2.m.above.ground..daily.minimum",
+    "Global.radiation..daily.mean",
+    "Relative.air.humidity.2.m.above.ground..daily.mean",
+    "Wind.speed.scalar..daily.mean.in.m.s",
+    "Precipitation..daily.total.0.UTC...0.UTC"
+  ),
+  clean_name = c(
+    "mean_temperature",
+    "max_temperature",
+    "min_temperature",
+    "radiation",
+    "relative_humidity",
+    "wind_speed",
+    "precipitation"
+  ),
+  long_name = c(
+    "Air temperature daily mean",
+    "Air temperature daily maximum",
+    "Air temperature daily minimum",
+    "Global radiation daily mean",
+    "Relative humidity daily mean",
+    "Wind speed daily mean",
+    "Precipitation daily total"
+  ),
+  units = c("K", "K", "K", "W m-2", "1", "m s-1", "kg m-2"),
+  stringsAsFactors = FALSE
+)
+
+# ============================================================
+# 6) Matrix builder (Map data to [nland, ntime])
+# ============================================================
+make_matrix <- function(col_name) {
+  full_grid <- tidyr::crossing(landid = stations$landid, date_day = all_dates)
   
-  lon_dim <- ncdim_def(
-    name = "longitude",
-    units = "degrees_east",
-    vals = target_lon,
-    longname = "longitude"
-  )
+  tmp <- full_grid %>%
+    left_join(daily_filtered, by = c("landid", "date_day")) %>%
+    select(landid, date_day, value = all_of(col_name)) %>%
+    arrange(landid, date_day)
   
-  # Define variable
-  var_def <- ncvar_def(
-    name = var_info$variable_name,
-    units = var_info$units,
-    dim = list(time_dim, lat_dim, lon_dim),
-    missval = -999.0,
-    longname = var_info$long_name,
-    prec = "double"
-  )
-  
-  # Create NetCDF file
-  nc_file <- nc_create(var_info$file, list(var_def), force_v4 = TRUE)
-  
-  # Add global attributes
-  ncatt_put(nc_file, 0, "title", paste("MeteoSwiss", var_info$long_name, "data"))
-  ncatt_put(nc_file, 0, "institution", "MeteoSwiss")
-  ncatt_put(nc_file, 0, "source", "Daily filled station data")
-  ncatt_put(nc_file, 0, "station_latitude", target_lat)
-  ncatt_put(nc_file, 0, "station_longitude", target_lon)
-  ncatt_put(nc_file, 0, "conventions", "CF-1.6")
-  
-  # Write data
-  # Reshape data to [time, lat, lon] dimensions
-  data_values <- data[[var_info$data_column]]
-  data_array <- array(data_values, dim = c(length(time_vals), 1, 1))
-  
-  ncvar_put(nc_file, var_def, data_array)
-  
-  # Close file
-  nc_close(nc_file)
-  
-  message(paste("Created:", var_info$file))
+  # Return matrix with stations as rows, time as columns
+  mat <- matrix(tmp$value, nrow = nland, ncol = ntime, byrow = TRUE)
+  storage.mode(mat) <- "numeric"
+  return(mat)
 }
 
-# Create NetCDF files for each variable
-for (var_name in names(variable_mapping)) {
-  var_info <- variable_mapping[[var_name]]
+# ============================================================
+# 7) NetCDF writer
+# ============================================================
+write_nc <- function(mat, varname, long_name, units, outfile) {
   
-  # Check if the column exists in the dataframe
-  if (var_info$data_column %in% colnames(daily_filled)) {
-    message(paste("Processing:", var_info$data_column))
-    create_netcdf(daily_filled, var_info)
-  } else {
-    warning(paste("Column", var_info$data_column, "not found in dataframe"))
-  }
+  fillvalue <- -9999
+  if (file.exists(outfile)) file.remove(outfile)
+  
+  # Define Dimensions
+  dim_land <- ncdim_def("landid", "station_index", stations$landid)
+  dim_time <- ncdim_def("time", "days since 1970-01-01", time_num)
+  
+  # Define Coordinate Variables
+  var_lon <- ncvar_def("lon", "degrees_east", list(dim_land), fillvalue, "longitude", prec="float")
+  var_lat <- ncvar_def("lat", "degrees_north", list(dim_land), fillvalue, "latitude", prec="float")
+  var_alt <- ncvar_def("altitude", "m", list(dim_land), fillvalue, "altitude", prec="float")
+  
+  # Define Main Data Variable (Short Name used here)
+  var_data <- ncvar_def(varname, units, list(dim_land, dim_time), fillvalue, long_name, prec="float")
+  
+  # Create File
+  nc <- nc_create(outfile, list(var_lon, var_lat, var_alt, var_data))
+  
+  # Fill Data
+  ncvar_put(nc, var_lon, stations$lon)
+  ncvar_put(nc, var_lat, stations$lat)
+  ncvar_put(nc, var_alt, stations$alt)
+  
+  mat[is.na(mat)] <- fillvalue
+  ncvar_put(nc, var_data, mat)
+  
+  # Global attributes
+  ncatt_put(nc, 0, "title", "MeteoSwiss station forcing")
+  ncatt_put(nc, 0, "Conventions", "CF-1.6")
+  ncatt_put(nc, 0, "featureType", "timeSeries")
+  
+  nc_close(nc)
 }
 
-message("All NetCDF files have been created successfully!")
+# ============================================================
+# 8) Processing Loop
+# ============================================================
+out_dir <- "MeteoSwiss_station_to_netcdf"
+dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
-# Create gridlist_SCCII.txt
-# Format: longitude latitude (space-separated)
-gridlist_content <- paste(target_lon, target_lat)
+for (i in seq_len(nrow(var_info))) {
+  orig_col <- var_info$original_col[i]
+  short_name <- var_info$clean_name[i]
+  
+  cat("\nProcessing variable:", short_name, "\n")
+  
+  mat <- make_matrix(orig_col)
+  outfile <- file.path(out_dir, paste0(short_name, ".nc"))
+  
+  write_nc(
+    mat, 
+    varname = short_name, 
+    long_name = var_info$long_name[i], 
+    units = var_info$units[i], 
+    outfile = outfile
+  )
+}
 
-# Write gridlist_SCCII.txt
-writeLines(gridlist_content, "MeteoSwiss_station_to_netcdf/gridlist_SCCII.txt")
-message("Created: gridlist_SCCII.txt")
+# Save station metadata
+write.csv(stations, file.path(out_dir, "stations_used.csv"), row.names = FALSE)
 
-# Create soil_SCCII.dat
-# Format: longitude latitude soil_type (space-separated)
-soil_content <- paste(target_lon, target_lat, soil_type)
+cat("\n✅ DONE. Cleaned NetCDF files are in:", out_dir, "\n")
 
-# Write soil_SCCII.dat
-writeLines(soil_content, "MeteoSwiss_station_to_netcdf/soil_SCCII.dat")
-message("Created: soil_SCCII.dat")
+# ============================================================
+# 9) Create gridlist_SCCII.txt
+# ============================================================
+# Format: landid station_abbr (space separated)
+# Ensuring landid matches the dimension in the NetCDF
+gridlist_path <- file.path(out_dir, "gridlist_SCCII.txt")
 
-# Display the contents
-cat("\nContents of gridlist_SCCII.txt:\n")
-cat(gridlist_content, "\n")
+write.table(
+  stations %>% select(landid, station_abbr),
+  file = gridlist_path,
+  sep = " ",
+  row.names = FALSE,
+  col.names = FALSE,
+  quote = FALSE
+)
 
-cat("\nContents of soil_SCCII.dat:\n")
-cat(soil_content, "\n")
+cat("\nCreated gridlist_SCCII.txt - Land IDs match NetCDF dimensions.")
+
+# ============================================================
+# 10) Create soil_SCCII.dat
+# ============================================================
+# Format: lon lat value (space separated)
+# Using raw numeric values to match NetCDF coordinate precision
+soil_path <- file.path(out_dir, "soil_SCCII.dat")
+
+soil_data <- stations %>%
+  transmute(
+    lon = lon,  # Matches ncvar_put(nc, var_lon, stations$lon)
+    lat = lat,  # Matches ncvar_put(nc, var_lat, stations$lat)
+    val = 6     # Your specified soil type value
+  )
+
+write.table(
+  soil_data,
+  file = soil_path,
+  sep = " ",
+  row.names = FALSE,
+  col.names = FALSE,
+  quote = FALSE
+)
+
+cat("\nCreated soil_SCCII.dat - Coordinates match NetCDF variables.\n")
+
+cat("\n✅ SUCCESS: All files are synchronized.\n")

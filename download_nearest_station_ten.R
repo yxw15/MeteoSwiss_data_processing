@@ -809,3 +809,29 @@ cat("Date range processed:", define_start_date, "to", define_end_date, "\n")
 cat("Stations processed:", nrow(combined_summaries), "out of 10\n")
 cat("Output directory:", out_dir, "\n")
 cat(rep("=", 60), "\n")
+
+# Get the maximum row count
+max_rows <- daily_filled %>%
+  group_by(station_abbr) %>%
+  summarise(row_count = n(), .groups = "drop") %>%
+  pull(row_count) %>%
+  max()
+
+# Keep only the complete stations (with max rows)
+daily_filtered <- daily_filled %>%
+  group_by(station_abbr) %>%
+  filter(n() == max_rows) %>%
+  ungroup()
+
+# Verify the result
+daily_filtered %>%
+  group_by(station_abbr) %>%
+  summarise(row_count = n(), .groups = "drop") %>%
+  arrange(desc(row_count))
+
+# Save filtered dataset
+write.csv(
+  daily_filtered,
+  "MeteoSwiss_station/all_filtered_19910101_to_20251231.csv",
+  row.names = FALSE
+)
