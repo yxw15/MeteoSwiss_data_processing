@@ -198,6 +198,7 @@ MeteoSwiss_data_processing/
 ├── download_netcdf.R                   # Bulk download of gridded NetCDF archives
 ├── check_netcdf.R                      # Inspect NetCDF files
 ├── README.md                           # This file
+├── LICENSE                             # MIT License
 ├── README_download_nearest_station_one.md
 ├── README_download_nearest_station_ten.md
 └── README_station_to_netcdf.md
@@ -245,10 +246,9 @@ Please keep scripts self-contained with a clearly documented **User settings** s
 
 ## License
 
-> **No license file is currently present in this repository.**
-> The author has not yet chosen a license. Until a license is added, this code is under exclusive copyright by default—please contact the repository owner before using or distributing this code.
->
-> If you are the repository owner, consider adding a license. Common choices for research software include [MIT](https://choosealicense.com/licenses/mit/), [GPL-3.0](https://choosealicense.com/licenses/gpl-3.0/), or [Apache-2.0](https://choosealicense.com/licenses/apache-2.0/).
+This project is licensed under the [MIT License](LICENSE).
+
+Copyright (c) 2026 yxw15
 
 ---
 
