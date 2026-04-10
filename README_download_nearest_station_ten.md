@@ -93,17 +93,19 @@ Each station is processed as the primary station once, with the remaining 9 stat
 - **Overall Fill Percentage**: 100%
 
 ## Per-Station Filling Summary
-   station_abbr      station_name distance_to_target_km total_days original_na filled_na remaining_na fill_percentage
-1           RUE         Rünenberg              7.802335      12784           9         9            0             100
-2           STC    St. Chrischona             16.221361      12186       28433     28433            0             100
-3           MOE            Möhlin             16.690780      12784       44404     44404            0             100
-4           GOE            Gösgen             17.125216      12784       12864     12864            0             100
-5           BAS Basel / Binningen             18.409247      12784          23        23            0             100
-6           WYN             Wynau             20.498284      12784          32        32            0             100
-7           BUS     Buchs / Aarau             23.661765      12784          19        19            0             100
-8           DEM          Delémont             33.571457      12782       16012     16012            0             100
-9           EGO          Egolzwil             33.661168      12784       44629     44629            0             100
-10          PSI Würenlingen / PSI             35.614937      12405       31139     31139            0             100
+
+| Rank | Station | Station Name | Distance (km) | Alt Diff (m) | Latitude | Longitude | Altitude (m) | Total Days | Original NA | Filled NA | Remaining NA | Fill (%) |
+|------|---------|--------------|---------------|--------------|----------|-----------|--------------|------------|-------------|-----------|--------------|----------|
+| 1 | RUE | Rünenberg | 7.80 | 166 | 47.424444 | 7.879722 | 610 | 12784 | 9 | 9 | 0 | 100 |
+| 2 | STC | St. Chrischona | 16.22 | 166 | 47.582222 | 7.685833 | 490 | 12186 | 28433 | 28433 | 0 | 100 |
+| 3 | MOE | Möhlin | 16.69 | 166 | 47.558333 | 7.844444 | 308 | 12784 | 44404 | 44404 | 0 | 100 |
+| 4 | GOE | Gösgen | 17.13 | 166 | 47.368333 | 7.958333 | 380 | 12784 | 12864 | 12864 | 0 | 100 |
+| 5 | BAS | Basel / Binningen | 18.41 | 166 | 47.540278 | 7.583333 | 316 | 12784 | 23 | 23 | 0 | 100 |
+| 6 | WYN | Wynau | 20.50 | 166 | 47.255556 | 7.816667 | 420 | 12784 | 32 | 32 | 0 | 100 |
+| 7 | BUS | Buchs / Aarau | 23.66 | 166 | 47.395833 | 8.086389 | 386 | 12784 | 19 | 19 | 0 | 100 |
+| 8 | DEM | Delémont | 33.57 | 166 | 47.373611 | 7.335278 | 439 | 12782 | 16012 | 16012 | 0 | 100 |
+| 9 | EGO | Egolzwil | 33.66 | 166 | 47.184444 | 8.005278 | 519 | 12784 | 44629 | 44629 | 0 | 100 |
+| 10 | PSI | Würenlingen / PSI | 35.61 | 166 | 47.536475 | 8.226944 | 334 | 12405 | 31139 | 31139 | 0 | 100 |
 
 ## Usage Instructions
 

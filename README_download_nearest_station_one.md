@@ -20,18 +20,17 @@ and fills missing values using data from nearby backup stations.
 - **Altitude Difference**: 111 m
 
 ## Backup Stations Used
-# A tibble: 9 × 3
-  Station Name              Distance_km
-  <chr>   <chr>                   <dbl>
-1 STC     St. Chrischona           16.2
-2 MOE     Möhlin                   16.7
-3 GOE     Gösgen                   17.1
-4 BAS     Basel / Binningen        18.4
-5 WYN     Wynau                    20.5
-6 BUS     Buchs / Aarau            23.7
-7 DEM     Delémont                 33.6
-8 EGO     Egolzwil                 33.7
-9 PSI     Würenlingen / PSI        35.6
+| Rank | Station | Station Name | Distance (km) | Alt Diff (m) | Latitude | Longitude | Altitude (m) |
+|------|---------|--------------|---------------|--------------|----------|-----------|--------------|
+| 1 | STC | St. Chrischona | 16.22 | 166 | 47.582222 | 7.685833 | 490 |
+| 2 | MOE | Möhlin | 16.69 | 166 | 47.558333 | 7.844444 | 308 |
+| 3 | GOE | Gösgen | 17.13 | 166 | 47.368333 | 7.958333 | 380 |
+| 4 | BAS | Basel / Binningen | 18.41 | 166 | 47.540278 | 7.583333 | 316 |
+| 5 | WYN | Wynau | 20.50 | 166 | 47.255556 | 7.816667 | 420 |
+| 6 | BUS | Buchs / Aarau | 23.66 | 166 | 47.395833 | 8.086389 | 386 |
+| 7 | DEM | Delémont | 33.57 | 166 | 47.373611 | 7.335278 | 439 |
+| 8 | EGO | Egolzwil | 33.66 | 166 | 47.184444 | 8.005278 | 519 |
+| 9 | PSI | Würenlingen / PSI | 35.61 | 166 | 47.536475 | 8.226944 | 334 |
 
 ## Parameters Processed
 - Global radiation; daily mean
