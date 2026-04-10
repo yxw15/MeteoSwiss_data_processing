@@ -16,6 +16,10 @@ target_lat <- 47.439
 target_lon <- 7.776
 target_alt <- 500
 
+# Define date range
+define_start_date <- "1991-01-01"
+define_end_date <- "2025-12-31"
+
 wanted_desc <- c(
   "Global radiation; daily mean",
   "Precipitation; daily total 0 UTC - 0 UTC",
@@ -45,7 +49,7 @@ read_csv_semicolon <- function(x) {
 }
 
 detect_date_col <- function(df) {
-  candidate_date_cols <- c("date", "reference_timestamp", "REFERENCE_TS", "timestamp", "datetime")
+  candidate_date_cols <- c("date", "reference_timestamp", "timestamp", "datetime")
   hit <- candidate_date_cols[candidate_date_cols %in% names(df)][1]
   if (length(hit) == 0 || is.na(hit)) return(NA_character_)
   hit
@@ -54,9 +58,6 @@ detect_date_col <- function(df) {
 sanitize_station_df <- function(df) {
   if (is.null(df)) return(NULL)
   names(df) <- gsub("'", "", names(df), fixed = TRUE)
-  if ("REFERENCE_TS" %in% names(df) && !"reference_timestamp" %in% names(df)) {
-    df <- df %>% rename(reference_timestamp = REFERENCE_TS)
-  }
   df
 }
 
@@ -391,8 +392,8 @@ primary_data <- process_station_data(
   wanted_params = wanted_params,
   wanted_shortnames = wanted_shortnames,
   rename_df = rename_df,
-  date_start = "1991-01-01",
-  date_end = "2024-12-31"
+  date_start = define_start_date,
+  date_end = define_end_date
 )
 
 if(is.null(primary_data)) stop("Failed to download primary station data")
@@ -423,8 +424,8 @@ for(i in seq_along(backup_stations)) {
       wanted_params = wanted_params,
       wanted_shortnames = wanted_shortnames,
       rename_df = rename_df,
-      date_start = "1991-01-01",
-      date_end = "2024-12-31"
+      date_start = define_start_date,
+      date_end = define_end_date
     )
     
     if(!is.null(data)) {
@@ -519,9 +520,16 @@ cat("\n", rep("=", 60), "\n")
 cat("STEP 8: Saving outputs\n")
 cat(rep("=", 60), "\n")
 
+# Create filename with date range
+date_range_filename <- paste0("daily_filled_", 
+                              gsub("-", "", define_start_date), 
+                              "_to_", 
+                              gsub("-", "", define_end_date), 
+                              ".csv")
+
 # Save filled data
-write_csv(filled_data, file.path(out_dir, "daily_filled_1991-2024.csv"))
-cat("Saved: daily_filled_1991-2024.csv\n")
+write_csv(filled_data, file.path(out_dir, date_range_filename))
+cat("Saved:", date_range_filename, "\n")
 
 # Save fill source report (includes station_name)
 write_csv(fill_source, file.path(out_dir, "fill_source_report.csv"))
@@ -584,6 +592,169 @@ summary_report <- data.frame(
 write_csv(summary_report, file.path(out_dir, "filling_summary.csv"))
 cat("Saved: filling_summary.csv\n")
 
+# ============================================================
+# 8) Create README.md file
+# ============================================================
+
+cat("\n", rep("=", 60), "\n")
+cat("STEP 9: Creating README.md\n")
+cat(rep("=", 60), "\n")
+
+readme_content <- paste0(
+  "# MeteoSwiss Station Data Processing\n\n",
+  
+  "## Overview\n",
+  "This script downloads meteorological data from MeteoSwiss stations, processes daily measurements,\n",
+  "and fills missing values using data from nearby backup stations.\n\n",
+  
+  "## Target Location\n",
+  "- **Latitude**: ", target_lat, "\n",
+  "- **Longitude**: ", target_lon, "\n",
+  "- **Altitude**: ", target_alt, " m\n\n",
+  
+  "## Date Range Processed\n",
+  "- **Start Date**: ", define_start_date, "\n",
+  "- **End Date**: ", define_end_date, "\n\n",
+  
+  "## Primary Station\n",
+  "- **Station Abbreviation**: ", nearest_station_abbr, "\n",
+  "- **Station Name**: ", nearest_10_stations$station_name[nearest_10_stations$station_abbr == nearest_station_abbr][1], "\n",
+  "- **Distance from Target**: ", round(nearest_10_stations$dist_km[nearest_10_stations$station_abbr == nearest_station_abbr][1], 2), " km\n",
+  "- **Altitude Difference**: ", nearest_10_stations$alt_diff_m[nearest_10_stations$station_abbr == nearest_station_abbr][1], " m\n\n",
+  
+  "## Backup Stations Used\n",
+  paste0(capture.output(print(
+    nearest_10_stations %>% 
+      filter(station_abbr %in% backup_names) %>%
+      select(Station = station_abbr, Name = station_name, Distance_km = dist_km)
+  )), collapse = "\n"), "\n\n",
+  
+  "## Parameters Processed\n",
+  paste0("- ", paste(wanted_desc, collapse = "\n- ")), "\n\n",
+  
+  "## Data Processing Steps\n",
+  "1. **Metadata Download**: Reads station metadata, parameter definitions, and inventory\n",
+  "2. **Station Selection**: Finds 10 nearest stations based on geographic coordinates\n",
+  "3. **Data Download**: Fetches daily data from STAC API (recent and historical)\n",
+  "4. **Data Processing**: \n",
+  "   - Converts temperature from °C to Kelvin (+273.15)\n",
+  "   - Converts wind speed from km/h to m/s (÷3.6)\n",
+  "   - Standardizes date formats\n",
+  "   - Filters to specified date range\n",
+  "5. **Missing Value Filling**: \n",
+  "   - Uses backup stations in order of proximity\n",
+  "   - Fills missing values on a per-variable, per-day basis\n",
+  "   - Tracks which backup station filled each value\n",
+  "6. **Output Generation**: Creates multiple CSV files with results\n\n",
+  
+  "## Output Files\n\n",
+  
+  "### Main Data Files\n",
+  "- **`", date_range_filename, "`**: Complete filled daily data for the primary station\n",
+  "  - Columns: station_abbr, date, date_day, all meteorological parameters, filling metadata\n",
+  "  - Temperature in Kelvin, Precipitation in mm, Radiation in W/m², Humidity in %, Wind in m/s\n\n",
+  
+  "### Filling Reports\n",
+  "- **`fill_source_report.csv`**: Detailed record of each filled value\n",
+  "  - Shows which backup station provided each value\n",
+  "  - Includes station name and distance\n",
+  "  - Tracks date, variable, and source station\n\n",
+  
+  "- **`fill_source_summary_by_station.csv`**: Summary statistics by backup station\n",
+  "  - Count of times each backup station was used\n",
+  "  - Date range of contributions from each station\n",
+  "  - Breakdown by variable type\n\n",
+  
+  "- **`filling_log.csv`**: Days where filling occurred\n",
+  "  - Shows number of variables filled per day\n",
+  "  - Includes the filled values\n\n",
+  
+  "- **`still_missing_after_filling.csv`**: Days with remaining missing data\n",
+  "  - Identifies gaps that couldn't be filled by any backup station\n\n",
+  
+  "### Summary Reports\n",
+  "- **`filling_summary.csv`**: Overall statistics\n",
+  "  - Primary station information\n",
+  "  - Original vs final NA counts\n",
+  "  - Fill percentage achieved\n\n",
+  
+  "## Data Quality Notes\n",
+  "- **Temperature**: Converted to Kelvin (K) for thermodynamic consistency\n",
+  "- **Wind Speed**: Converted to meters per second (m/s)\n",
+  "- **Precipitation**: Daily totals in millimeters (mm)\n",
+  "- **Radiation**: Daily mean in Watts per square meter (W/m²)\n",
+  "- **Humidity**: Daily mean relative humidity (%)\n\n",
+  
+  "## Filling Statistics\n",
+  paste0(
+    "- **Original Missing Values**: ", original_na, "\n",
+    "- **Values Filled**: ", total_filled, "\n",
+    "- **Remaining Missing**: ", final_na, "\n",
+    "- **Fill Percentage**: ", if(original_na > 0) round(total_filled/original_na * 100, 2) else 100, "%\n\n"
+  ),
+  
+  "## Usage Instructions\n\n",
+  "### Running the Script\n",
+  "```r\n",
+  "source(\"meteoswiss_data_processing.R\")\n",
+  "```\n\n",
+  
+  "### Modifying Parameters\n",
+  "Edit the user settings section at the top of the script:\n",
+  "```r\n",
+  "target_lat <- 47.439          # Target latitude\n",
+  "target_lon <- 7.776           # Target longitude\n",
+  "target_alt <- 500             # Target altitude (m)\n",
+  "define_start_date <- \"1991-01-01\"\n",
+  "define_end_date <- \"2025-12-31\"\n",
+  "```\n\n",
+  
+  "### Customizing Variables\n",
+  "Modify the `wanted_desc` vector to select different meteorological parameters:\n",
+  "```r\n",
+  "wanted_desc <- c(\n",
+  "  \"Global radiation; daily mean\",\n",
+  "  \"Precipitation; daily total 0 UTC - 0 UTC\",\n",
+  "  # Add or remove parameters as needed\n",
+  ")\n",
+  "```\n\n",
+  
+  "## Dependencies\n",
+  "Required R packages:\n",
+  "- `readr` - CSV reading\n",
+  "- `dplyr` - Data manipulation\n",
+  "- `geosphere` - Distance calculations\n",
+  "- `httr2` - HTTP requests\n",
+  "- `purrr` - Functional programming\n",
+  "- `stringr` - String manipulation\n",
+  "- `tidyr` - Data tidying\n",
+  "- `lubridate` - Date handling\n\n",
+  
+  "## Data Source\n",
+  "Data provided by MeteoSwiss (Federal Office of Meteorology and Climatology)\n",
+  "- **Stations Metadata**: ", stations_url, "\n",
+  "- **Parameters Metadata**: ", params_url, "\n",
+  "- **Inventory**: ", inventory_url, "\n",
+  "- **STAC API**: ", stac_items_url, "\n\n",
+  
+  "## License and Attribution\n",
+  "This script processes Open Government Data (OGD) from MeteoSwiss.\n",
+  "Please cite MeteoSwiss as the data source in any publications or derived products.\n\n",
+  
+  "## Contact\n",
+  "For questions or issues, please refer to the MeteoSwiss data portal documentation.\n\n",
+  
+  "## Last Updated\n",
+  format(Sys.Date(), "%Y-%m-%d")
+)
+
+# Write README.md
+writeLines(readme_content, file.path("R_scripts/README_download_nearest_station_one.md"))
+cat("Saved: README.md\n")
+
 cat("\n", rep("=", 60), "\n")
 cat("PROCESS COMPLETED SUCCESSFULLY\n")
+cat("Date range processed:", define_start_date, "to", define_end_date, "\n")
+cat("Output directory:", out_dir, "\n")
 cat(rep("=", 60), "\n")
+
