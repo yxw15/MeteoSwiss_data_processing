@@ -1,4 +1,4 @@
-setwd("/dss/dsshome1/0D/ge35qej2/MeteoSwiss")
+setwd("/dss/dssfs02/lwp-dss-0001/pr48va/pr48va-dss-0000/yixuan/LPJ_GUESS_HYD")
 
 library(dplyr)
 library(tidyr)
@@ -10,12 +10,14 @@ library(lubridate)
 # 1) Load data
 # ============================================================
 daily_filtered <- read.csv(
-  "MeteoSwiss_station/all_filtered_19910101_to_20251231.csv"
+  "MeteoSwiss/Hoelstein_station_to_netcdf/all_filled_hoelstein_19910101_to_20251231.csv"
 )
+
+out_dir <- "MeteoSwiss/Hoelstein_station_to_netcdf"
 
 daily_filtered <- daily_filtered %>%
   mutate(
-    date_day = as.Date(date_day),
+    date_day = as.Date(date),
     time = as.POSIXct(date_day, tz = "UTC")
   )
 
@@ -26,9 +28,8 @@ stations <- daily_filtered %>%
   group_by(station_abbr) %>%
   summarise(
     # We force R to recognize these as 6-decimal numbers immediately
-    lat = as.numeric(sprintf("%.6f", first(primary_station_lat))),
-    lon = as.numeric(sprintf("%.6f", first(primary_station_lon))),
-    alt = first(primary_station_alt_m),
+    lat = as.numeric(sprintf("%.6f", first(lat))),
+    lon = as.numeric(sprintf("%.6f", first(lon))),
     .groups = "drop"
   ) %>%
   arrange(station_abbr) %>%
@@ -58,26 +59,20 @@ nland <- nrow(stations)
 # ============================================================
 var_info <- data.frame(
   original_col = c(
-    "Air.temperature.2.m.above.ground..daily.mean",
-    "Air.temperature.2.m.above.ground..daily.maximum",
-    "Air.temperature.2.m.above.ground..daily.minimum",
-    "Global.radiation..daily.mean",
-    "Relative.air.humidity.2.m.above.ground..daily.mean",
-    "Wind.speed.scalar..daily.mean.in.m.s",
-    "Precipitation..daily.total.0.UTC...0.UTC"
+    "mean_temperature",
+    "radiation",
+    "relative_humidity",
+    "wind_speed",
+    "precipitation"
   ),
   clean_name = c(
     "mean_temperature",
-    "max_temperature",
-    "min_temperature",
     "radiation",
     "relative_humidity",
     "wind_speed",
     "precipitation"
   ),
   standard_name = c(
-    "air_temperature",
-    "air_temperature",
     "air_temperature",
     "surface_downwelling_shortwave_flux",
     "relative_humidity",
@@ -86,14 +81,12 @@ var_info <- data.frame(
   ),
   long_name = c(
     "Air temperature daily mean",
-    "Air temperature daily maximum",
-    "Air temperature daily minimum",
     "Global radiation daily mean",
     "Relative humidity daily mean",
     "Wind speed daily mean",
     "Precipitation daily total"
   ),
-  units = c("K", "K", "K", "W m-2", "1", "m s-1", "kg m-2"),
+  units = c("K", "W m-2", "1", "m s-1", "kg m-2"),
   stringsAsFactors = FALSE
 )
 
@@ -152,27 +145,12 @@ write_nc <- function(mat, varname, std_name, long_name, units, outfile) {
 # ============================================================
 # 8) Processing Loop
 # ============================================================
-out_dir <- "MeteoSwiss_station_to_netcdf"
-dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
-# ============================================================
-# 8) Processing Loop
-# ============================================================
-out_dir <- "MeteoSwiss_station_to_netcdf"
 dir.create(out_dir, recursive = TRUE, showWarnings = FALSE)
 
 for (i in seq_len(nrow(var_info))) {
   cat("\nProcessing variable:", var_info$clean_name[i], "\n")
-  
-  # 1. Create the matrix as usual
   mat <- make_matrix(var_info$original_col[i])
-  
-  # 2. Divide by 100 ONLY for relative humidity
-  if (var_info$clean_name[i] == "relative_humidity") {
-    cat("  -> Scaling: Dividing humidity values by 100 (converting % to fraction)\n")
-    mat <- mat / 100
-  }
-  
   outfile <- file.path(out_dir, paste0(var_info$clean_name[i], ".nc"))
   
   write_nc(

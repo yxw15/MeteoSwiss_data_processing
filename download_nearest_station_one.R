@@ -1,4 +1,4 @@
-setwd("/dss/dsshome1/0D/ge35qej2")
+setwd("/dss/dsshome1/0D/ge35qej2/MeteoSwiss")
 
 library(readr)
 library(dplyr)
