@@ -1,4 +1,4 @@
-setwd("/home/yixuan/Documents/Manuscript3/Data")
+setwd("/dss/dssfs02/lwp-dss-0001/pr48va/pr48va-dss-0000/yixuan/LPJ_GUESS_HYD/MeteoSwiss")
 
 library(readr)
 library(dplyr)
@@ -644,6 +644,45 @@ write.csv(
   row.names = FALSE
 )
 
+daily_csv_selected <- daily_filtered %>%
+  select(
+    primary_station_abbr,
+    primary_station_name,
+    primary_station_lat,
+    primary_station_lon,
+    date,
+    date_day,
+    `Wind speed scalar; daily mean in m/s`,
+    `Global radiation; daily mean`,
+    `Precipitation; daily total 0 UTC - 0 UTC`,
+    `Air temperature 2 m above ground; daily mean`,
+    `Relative air humidity 2 m above ground; daily mean`
+  ) %>%
+  rename(
+    station_abbr = `primary_station_abbr`,
+    station = `primary_station_name`,
+    lat = `primary_station_lat`,
+    lon = `primary_station_lon`,
+    wind_speed_daily_mean = `Wind speed scalar; daily mean in m/s`,
+    global_radiation_daily_mean = `Global radiation; daily mean`,
+    precipitation_daily_total = `Precipitation; daily total 0 UTC - 0 UTC`,
+    temperature_daily_mean = `Air temperature 2 m above ground; daily mean`,
+    relative_humidity_daily_mean = `Relative air humidity 2 m above ground; daily mean`
+  ) %>%
+  mutate(
+    relative_humidity_daily_mean = relative_humidity_daily_mean / 100
+  )
+
+colnames(daily_csv_selected)
+head(daily_csv_selected)
+str(daily_csv_selected)
+
+write.csv(
+  daily_csv_selected,
+  "MeteoSwiss_station/all_selected_19910101_to_20251231.csv",
+  row.names = FALSE
+)
+
 # ============================================================
 # 8) Create README.md file (Improved)
 # ============================================================
@@ -756,7 +795,7 @@ Generated: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "
 )
 
 # ---- Save README ----
-readme_path <- file.path(getwd(), "../MeteoSwiss_data_processing/README_download_nearest_station_ten.md")
+readme_path <- file.path(getwd(), "MeteoSwiss_data_processing/README_download_nearest_station_ten.md")
 writeLines(readme_content, readme_path)
 cat("Saved:", readme_path, "\n")
 
