@@ -1,171 +1,83 @@
-# MeteoSwiss Station Data Processing - 10 Nearest Stations
-
-## Overview
-This script downloads meteorological data from the 10 nearest MeteoSwiss stations to a target location,
-processes daily measurements, and fills missing values using data from the other stations as backups.
-Each station is processed as the primary station once, with the remaining 9 stations serving as backups.
+# MeteoSwiss Data Processing - 10 Nearest Stations
 
 ## Target Location
-- **Latitude**: 47.439
-- **Longitude**: 7.776
-- **Altitude**: 500 m
+- Latitude: 47.439
+- Longitude: 7.776
+- Altitude: 500 m
 
-## Date Range Processed
-- **Start Date**: 1991-01-01
-- **End Date**: 2025-12-31
+## Date Range
+- 1991-01-01 to 2025-12-31
+- Total days: 12784
 
-## The 10 Nearest Stations
-| Rank | Station Abbr | Station Name | Distance (km) | Alt Diff (m) | Latitude | Longitude | Altitude (m) |
-|------|--------------|--------------|---------------|--------------|----------|-----------|--------------|
-| 1 | RUE | Rünenberg | 7.8 | 111 | 47.434572 | 7.879414 | 611 |
-| 2 | STC | St. Chrischona | 16.22 | 7 | 47.571767 | 7.687094 | 493 |
-| 3 | MOE | Möhlin | 16.69 | 157 | 47.572197 | 7.877911 | 343 |
-| 4 | GOE | Gösgen | 17.13 | 120 | 47.363147 | 7.973733 | 380 |
-| 5 | BAS | Basel / Binningen | 18.41 | 184 | 47.541142 | 7.583525 | 316 |
-| 6 | WYN | Wynau | 20.5 | 78 | 47.255025 | 7.787475 | 422 |
-| 7 | BUS | Buchs / Aarau | 23.66 | 113 | 47.384381 | 8.07955 | 387 |
-| 8 | DEM | Delémont | 33.57 | 61 | 47.351706 | 7.349567 | 439 |
-| 9 | EGO | Egolzwil | 33.66 | 22 | 47.179428 | 8.004758 | 522 |
-| 10 | PSI | Würenlingen / PSI | 35.61 | 166 | 47.536475 | 8.226944 | 334 |
+## Nearest Stations
+| Rank | Station | Distance (km) | Alt Diff (m) |
+|------|---------|---------------|--------------|
+| 1 | RUE | 7.8 | 111 |
+| 2 | STC | 16.22 | 7 |
+| 3 | MOE | 16.69 | 157 |
+| 4 | GOE | 17.13 | 120 |
+| 5 | BAS | 18.41 | 184 |
+| 6 | WYN | 20.5 | 78 |
+| 7 | BUS | 23.66 | 113 |
+| 8 | DEM | 33.57 | 61 |
+| 9 | EGO | 33.66 | 22 |
+| 10 | PSI | 35.61 | 166 |
 
-## Parameters Processed
+
+## Variables
 - Global radiation; daily mean
 - Precipitation; daily total 0 UTC - 0 UTC
 - Air temperature 2 m above ground; daily mean
-- Air temperature 2 m above ground; daily maximum
-- Air temperature 2 m above ground; daily minimum
 - Relative air humidity 2 m above ground; daily mean
 - Wind speed scalar; daily mean in m/s
 
-## Data Processing Steps
-1. **Metadata Download**: Reads station metadata, parameter definitions, and inventory from MeteoSwiss
-2. **Station Selection**: Finds 10 nearest stations based on geographic coordinates
-3. **Data Download**: Fetches daily data from STAC API (combines recent and historical data)
-4. **Data Processing for Each Station**: 
-   - Converts temperature from °C to Kelvin (+273.15)
-   - Converts wind speed from km/h to m/s (÷3.6)
-   - Standardizes date formats
-   - Filters to specified date range
-5. **Missing Value Filling** (for each station as primary): 
-   - Uses the other 9 stations as backups in order of proximity
-   - Fills missing values on a per-variable, per-day basis
-   - Tracks which backup station filled each value
-6. **Output Generation**: Creates multiple CSV files with results
+## Unit Conversions
+- Temperature: °C → Kelvin (+273.15)
+- Wind speed: km/h → m/s
 
 ## Output Files
+- **all_10_stations_filled_19910101_to_20251231.csv**
+- all_stations_fill_source_report.csv
+- all_stations_filling_summary.csv
+- filtered dataset
+- individual station files
 
-### Main Data Files
-- **`all_10_stations_filled_19910101_to_20251231.csv`**: Complete filled daily data for all 10 stations
-  - Each row includes the primary station's data with its metadata
-  - Columns: station_abbr, date, date_day, all meteorological parameters, filling metadata
-  - Plus primary station coordinates, altitude, distance, and altitude difference
-  - Temperature in Kelvin, Precipitation in mm, Radiation in W/m², Humidity in %, Wind in m/s
+## Filling Summary
 
-- **Individual station files**: `station_[ABBR]_filled_YYYYMMDD_to_YYYYMMDD.csv`
-  - Same structure as above but filtered for each specific station
+### Overall
+| Metric | Value |
+|--------|-------|
+| Original NA | 137743 |
+| Filled | 137743 |
+| Remaining | 0 |
+| Fill % | 100% |
 
-### Filling Reports
-- **`all_stations_fill_source_report.csv`**: Detailed record of each filled value across all stations
-  - **Columns**: date_day, variable, filled_by_station_abbr, filled_by_station_name, primary_station_abbr, primary_station_name
-  - Shows which backup station provided each value (includes both abbreviation and full name)
-  - Identifies which primary station received the fill
-  - Simple format focused on station identification
+### Per Station
+| Station | Dist (km) | Days | NA (orig) | Filled | Fill % |
+|---------|-----------|------|------------|--------|--------|
+| RUE | 7.8 | 12784 | 9 | 9 | 100 |
+| STC | 16.22 | 12186 | 17609 | 17609 | 100 |
+| MOE | 16.69 | 12784 | 29990 | 29990 | 100 |
+| GOE | 17.13 | 12784 | 12824 | 12824 | 100 |
+| BAS | 18.41 | 12784 | 23 | 23 | 100 |
+| WYN | 20.5 | 12784 | 32 | 32 | 100 |
+| BUS | 23.66 | 12784 | 19 | 19 | 100 |
+| DEM | 33.57 | 12782 | 15979 | 15979 | 100 |
+| EGO | 33.66 | 12784 | 30119 | 30119 | 100 |
+| PSI | 35.61 | 12405 | 31139 | 31139 | 100 |
 
-- **`all_stations_filling_summary.csv`**: Summary statistics for each station
-  - Station information (name, coordinates, altitude)
-  - Distance and altitude difference to target
-  - Total days processed
-  - Original NA count, filled NA count, remaining NA count
-  - Fill percentage achieved
 
-## Data Quality Notes
-- **Temperature**: Converted to Kelvin (K) for thermodynamic consistency (0°C = 273.15K)
-- **Wind Speed**: Converted to meters per second (m/s) from km/h
-- **Precipitation**: Daily totals in millimeters (mm)
-- **Radiation**: Daily mean in Watts per square meter (W/m²)
-- **Humidity**: Daily mean relative humidity (%)
-- **Missing Data**: Values that couldn't be filled by any backup station remain as NA
+## Method
+Missing values are filled using nearby stations in order of distance.
 
-## Overall Filling Statistics
-- **Total Original Missing Values** (across all stations): 177564
-- **Total Values Filled**: 177564
-- **Total Remaining Missing**: 0
-- **Overall Fill Percentage**: 100%
-
-## Per-Station Filling Summary
-
-| Rank | Station | Station Name | Distance (km) | Alt Diff (m) | Latitude | Longitude | Altitude (m) | Total Days | Original NA | Filled NA | Remaining NA | Fill (%) |
-|------|---------|--------------|---------------|--------------|----------|-----------|--------------|------------|-------------|-----------|--------------|----------|
-| 1 | RUE | Rünenberg | 7.80 | 166 | 47.424444 | 7.879722 | 610 | 12784 | 9 | 9 | 0 | 100 |
-| 2 | STC | St. Chrischona | 16.22 | 166 | 47.582222 | 7.685833 | 490 | 12186 | 28433 | 28433 | 0 | 100 |
-| 3 | MOE | Möhlin | 16.69 | 166 | 47.558333 | 7.844444 | 308 | 12784 | 44404 | 44404 | 0 | 100 |
-| 4 | GOE | Gösgen | 17.13 | 166 | 47.368333 | 7.958333 | 380 | 12784 | 12864 | 12864 | 0 | 100 |
-| 5 | BAS | Basel / Binningen | 18.41 | 166 | 47.540278 | 7.583333 | 316 | 12784 | 23 | 23 | 0 | 100 |
-| 6 | WYN | Wynau | 20.50 | 166 | 47.255556 | 7.816667 | 420 | 12784 | 32 | 32 | 0 | 100 |
-| 7 | BUS | Buchs / Aarau | 23.66 | 166 | 47.395833 | 8.086389 | 386 | 12784 | 19 | 19 | 0 | 100 |
-| 8 | DEM | Delémont | 33.57 | 166 | 47.373611 | 7.335278 | 439 | 12782 | 16012 | 16012 | 0 | 100 |
-| 9 | EGO | Egolzwil | 33.66 | 166 | 47.184444 | 8.005278 | 519 | 12784 | 44629 | 44629 | 0 | 100 |
-| 10 | PSI | Würenlingen / PSI | 35.61 | 166 | 47.536475 | 8.226944 | 334 | 12405 | 31139 | 31139 | 0 | 100 |
-
-## Usage Instructions
-
-### Running the Script
-```r
-source("meteoswiss_10_stations_processing.R")
-```
-
-### Modifying Parameters
-Edit the user settings section at the top of the script:
-```r
-target_lat <- 47.439          # Target latitude
-target_lon <- 7.776           # Target longitude
-target_alt <- 500             # Target altitude (m)
-define_start_date <- "1991-01-01"
-define_end_date <- "2025-12-31"
-```
-
-### Customizing Variables
-Modify the `wanted_desc` vector to select different meteorological parameters:
-```r
-wanted_desc <- c(
-  "Global radiation; daily mean",
-  "Precipitation; daily total 0 UTC - 0 UTC",
-  # Add or remove parameters as needed
-)
-```
-
-## Dependencies
-Required R packages:
-- `readr` - CSV reading
-- `dplyr` - Data manipulation
-- `geosphere` - Distance calculations
-- `httr2` - HTTP requests
-- `purrr` - Functional programming
-- `stringr` - String manipulation
-- `tidyr` - Data tidying
-- `lubridate` - Date handling
+## Limitations
+- No temporal interpolation
+- No elevation correction
+- First-available station used (no weighting)
 
 ## Data Source
-Data provided by MeteoSwiss (Federal Office of Meteorology and Climatology)
-- **Stations Metadata**: https://data.geo.admin.ch/ch.meteoschweiz.ogd-smn/ogd-smn_meta_stations.csv
-- **Parameters Metadata**: https://data.geo.admin.ch/ch.meteoschweiz.ogd-smn/ogd-smn_meta_parameters.csv
-- **Inventory**: https://data.geo.admin.ch/ch.meteoschweiz.ogd-smn/ogd-smn_meta_datainventory.csv
-- **STAC API**: https://data.geo.admin.ch/api/stac/v1/collections/ch.meteoschweiz.ogd-smn/items
+MeteoSwiss Open Government Data
 
-## Methodology Notes
-1. **Distance Calculation**: Haversine formula for great-circle distance between coordinates
-2. **Station Ranking**: Sorted by distance, then by altitude difference to target
-3. **Backup Priority**: Backup stations are tried in order of increasing distance from target
-4. **Filling Strategy**: For each missing value, the script finds the closest backup station with data for that specific date and variable
-5. **Data Completeness**: Not all stations have all parameters; the script handles missing parameters gracefully
+---
+Generated: 2026-05-04 12:25:34
 
-## License and Attribution
-This script processes Open Government Data (OGD) from MeteoSwiss.
-Please cite MeteoSwiss as the data source in any publications or derived products.
-
-## Contact
-For questions about the data, please refer to the MeteoSwiss data portal documentation.
-For questions about this script, refer to the comments in the source code.
-
-## Last Updated
-2026-04-10

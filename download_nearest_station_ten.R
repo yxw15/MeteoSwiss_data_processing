@@ -1,4 +1,4 @@
-setwd("/dss/dsshome1/0D/ge35qej2/MeteoSwiss")
+setwd("/home/yixuan/Documents/Manuscript3/Data")
 
 library(readr)
 library(dplyr)
@@ -24,8 +24,6 @@ wanted_desc <- c(
   "Global radiation; daily mean",
   "Precipitation; daily total 0 UTC - 0 UTC",
   "Air temperature 2 m above ground; daily mean",
-  "Air temperature 2 m above ground; daily maximum",
-  "Air temperature 2 m above ground; daily minimum",
   "Relative air humidity 2 m above ground; daily mean",
   "Wind speed scalar; daily mean in m/s"
 )
@@ -372,8 +370,8 @@ assets_tbl <- map_dfr(features, extract_assets) %>%
 # Define measurement variables
 measure_vars <- c(
   "Air temperature 2 m above ground; daily mean",
-  "Air temperature 2 m above ground; daily maximum",
-  "Air temperature 2 m above ground; daily minimum",
+  # "Air temperature 2 m above ground; daily maximum",
+  # "Air temperature 2 m above ground; daily minimum",
   "Global radiation; daily mean",
   "Relative air humidity 2 m above ground; daily mean",
   "Wind speed scalar; daily mean in m/s",
@@ -620,205 +618,15 @@ for(i in 1:length(all_stations_filled)) {
   cat("Saved:", station_filename, "\n")
 }
 
-# ============================================================
-# 8) Create README.md file
-# ============================================================
-
-cat("\n", rep("=", 60), "\n")
-cat("STEP 8: Creating README.md\n")
-cat(rep("=", 60), "\n")
-
-# Calculate total statistics for README
-total_original_na <- sum(combined_summaries$original_na)
-total_filled_na <- sum(combined_summaries$filled_na)
-total_remaining_na <- sum(combined_summaries$remaining_na)
-overall_fill_percentage <- if(total_original_na > 0) round(total_filled_na/total_original_na * 100, 2) else 100
-
-# Create stations table for README
-stations_table <- "| Rank | Station Abbr | Station Name | Distance (km) | Alt Diff (m) | Latitude | Longitude | Altitude (m) |\n"
-stations_table <- paste0(stations_table, "|------|--------------|--------------|---------------|--------------|----------|-----------|--------------|\n")
-
-for(i in 1:nrow(nearest_10_stations)) {
-  stations_table <- paste0(stations_table, "| ", i, " | ", 
-                           nearest_10_stations$station_abbr[i], " | ", 
-                           nearest_10_stations$station_name[i], " | ", 
-                           round(nearest_10_stations$dist_km[i], 2), " | ",
-                           round(nearest_10_stations$alt_diff_m[i], 2), " | ",
-                           nearest_10_stations$station_coordinates_wgs84_lat[i], " | ",
-                           nearest_10_stations$station_coordinates_wgs84_lon[i], " | ",
-                           nearest_10_stations$station_height_masl[i], " |\n")
-}
-
-readme_content <- paste0(
-  "# MeteoSwiss Station Data Processing - 10 Nearest Stations\n\n",
-  
-  "## Overview\n",
-  "This script downloads meteorological data from the 10 nearest MeteoSwiss stations to a target location,\n",
-  "processes daily measurements, and fills missing values using data from the other stations as backups.\n",
-  "Each station is processed as the primary station once, with the remaining 9 stations serving as backups.\n\n",
-  
-  "## Target Location\n",
-  "- **Latitude**: ", target_lat, "\n",
-  "- **Longitude**: ", target_lon, "\n",
-  "- **Altitude**: ", target_alt, " m\n\n",
-  
-  "## Date Range Processed\n",
-  "- **Start Date**: ", define_start_date, "\n",
-  "- **End Date**: ", define_end_date, "\n\n",
-  
-  "## The 10 Nearest Stations\n",
-  stations_table, "\n",
-  
-  "## Parameters Processed\n",
-  paste0("- ", paste(wanted_desc, collapse = "\n- ")), "\n\n",
-  
-  "## Data Processing Steps\n",
-  "1. **Metadata Download**: Reads station metadata, parameter definitions, and inventory from MeteoSwiss\n",
-  "2. **Station Selection**: Finds 10 nearest stations based on geographic coordinates\n",
-  "3. **Data Download**: Fetches daily data from STAC API (combines recent and historical data)\n",
-  "4. **Data Processing for Each Station**: \n",
-  "   - Converts temperature from °C to Kelvin (+273.15)\n",
-  "   - Converts wind speed from km/h to m/s (÷3.6)\n",
-  "   - Standardizes date formats\n",
-  "   - Filters to specified date range\n",
-  "5. **Missing Value Filling** (for each station as primary): \n",
-  "   - Uses the other 9 stations as backups in order of proximity\n",
-  "   - Fills missing values on a per-variable, per-day basis\n",
-  "   - Tracks which backup station filled each value\n",
-  "6. **Output Generation**: Creates multiple CSV files with results\n\n",
-  
-  "## Output Files\n\n",
-  
-  "### Main Data Files\n",
-  "- **`", date_range_filename, "`**: Complete filled daily data for all 10 stations\n",
-  "  - Each row includes the primary station's data with its metadata\n",
-  "  - Columns: station_abbr, date, date_day, all meteorological parameters, filling metadata\n",
-  "  - Plus primary station coordinates, altitude, distance, and altitude difference\n",
-  "  - Temperature in Kelvin, Precipitation in mm, Radiation in W/m², Humidity in %, Wind in m/s\n\n",
-  
-  "- **Individual station files**: `station_[ABBR]_filled_YYYYMMDD_to_YYYYMMDD.csv`\n",
-  "  - Same structure as above but filtered for each specific station\n\n",
-  
-  "### Filling Reports\n",
-  "- **`all_stations_fill_source_report.csv`**: Detailed record of each filled value across all stations\n",
-  "  - **Columns**: date_day, variable, filled_by_station_abbr, filled_by_station_name, primary_station_abbr, primary_station_name\n",
-  "  - Shows which backup station provided each value (includes both abbreviation and full name)\n",
-  "  - Identifies which primary station received the fill\n",
-  "  - Simple format focused on station identification\n\n",
-  
-  "- **`all_stations_filling_summary.csv`**: Summary statistics for each station\n",
-  "  - Station information (name, coordinates, altitude)\n",
-  "  - Distance and altitude difference to target\n",
-  "  - Total days processed\n",
-  "  - Original NA count, filled NA count, remaining NA count\n",
-  "  - Fill percentage achieved\n\n",
-  
-  "## Data Quality Notes\n",
-  "- **Temperature**: Converted to Kelvin (K) for thermodynamic consistency (0°C = 273.15K)\n",
-  "- **Wind Speed**: Converted to meters per second (m/s) from km/h\n",
-  "- **Precipitation**: Daily totals in millimeters (mm)\n",
-  "- **Radiation**: Daily mean in Watts per square meter (W/m²)\n",
-  "- **Humidity**: Daily mean relative humidity (%)\n",
-  "- **Missing Data**: Values that couldn't be filled by any backup station remain as NA\n\n",
-  
-  "## Overall Filling Statistics\n",
-  paste0(
-    "- **Total Original Missing Values** (across all stations): ", total_original_na, "\n",
-    "- **Total Values Filled**: ", total_filled_na, "\n",
-    "- **Total Remaining Missing**: ", total_remaining_na, "\n",
-    "- **Overall Fill Percentage**: ", overall_fill_percentage, "%\n\n"
-  ),
-  
-  "## Per-Station Filling Summary\n",
-  paste0(capture.output(print(combined_summaries %>% 
-                                select(station_abbr, station_name, distance_to_target_km, 
-                                       total_days, original_na, filled_na, remaining_na, fill_percentage))), 
-         collapse = "\n"), "\n\n",
-  
-  "## Usage Instructions\n\n",
-  "### Running the Script\n",
-  "```r\n",
-  "source(\"meteoswiss_10_stations_processing.R\")\n",
-  "```\n\n",
-  
-  "### Modifying Parameters\n",
-  "Edit the user settings section at the top of the script:\n",
-  "```r\n",
-  "target_lat <- 47.439          # Target latitude\n",
-  "target_lon <- 7.776           # Target longitude\n",
-  "target_alt <- 500             # Target altitude (m)\n",
-  "define_start_date <- \"1991-01-01\"\n",
-  "define_end_date <- \"2025-12-31\"\n",
-  "```\n\n",
-  
-  "### Customizing Variables\n",
-  "Modify the `wanted_desc` vector to select different meteorological parameters:\n",
-  "```r\n",
-  "wanted_desc <- c(\n",
-  "  \"Global radiation; daily mean\",\n",
-  "  \"Precipitation; daily total 0 UTC - 0 UTC\",\n",
-  "  # Add or remove parameters as needed\n",
-  ")\n",
-  "```\n\n",
-  
-  "## Dependencies\n",
-  "Required R packages:\n",
-  "- `readr` - CSV reading\n",
-  "- `dplyr` - Data manipulation\n",
-  "- `geosphere` - Distance calculations\n",
-  "- `httr2` - HTTP requests\n",
-  "- `purrr` - Functional programming\n",
-  "- `stringr` - String manipulation\n",
-  "- `tidyr` - Data tidying\n",
-  "- `lubridate` - Date handling\n\n",
-  
-  "## Data Source\n",
-  "Data provided by MeteoSwiss (Federal Office of Meteorology and Climatology)\n",
-  "- **Stations Metadata**: ", stations_url, "\n",
-  "- **Parameters Metadata**: ", params_url, "\n",
-  "- **Inventory**: ", inventory_url, "\n",
-  "- **STAC API**: ", stac_items_url, "\n\n",
-  
-  "## Methodology Notes\n",
-  "1. **Distance Calculation**: Haversine formula for great-circle distance between coordinates\n",
-  "2. **Station Ranking**: Sorted by distance, then by altitude difference to target\n",
-  "3. **Backup Priority**: Backup stations are tried in order of increasing distance from target\n",
-  "4. **Filling Strategy**: For each missing value, the script finds the closest backup station with data for that specific date and variable\n",
-  "5. **Data Completeness**: Not all stations have all parameters; the script handles missing parameters gracefully\n\n",
-  
-  "## License and Attribution\n",
-  "This script processes Open Government Data (OGD) from MeteoSwiss.\n",
-  "Please cite MeteoSwiss as the data source in any publications or derived products.\n",
-  "Data license: https://www.meteoswiss.admin.ch/home/copyright.html\n\n",
-  
-  "## Contact\n",
-  "For questions about the data, please refer to the MeteoSwiss data portal documentation.\n",
-  "For questions about this script, refer to the comments in the source code.\n\n",
-  
-  "## Last Updated\n",
-  format(Sys.Date(), "%Y-%m-%d")
-)
-
-# Write README.md
-writeLines(readme_content, file.path("R_scripts/README_download_nearest_station_ten.md"))
-cat("Saved: README_download_nearest_station_ten.md\n")
-
-cat("\n", rep("=", 60), "\n")
-cat("PROCESS COMPLETED SUCCESSFULLY\n")
-cat("Date range processed:", define_start_date, "to", define_end_date, "\n")
-cat("Stations processed:", nrow(combined_summaries), "out of 10\n")
-cat("Output directory:", out_dir, "\n")
-cat(rep("=", 60), "\n")
-
 # Get the maximum row count
-max_rows <- daily_filled %>%
+max_rows <- combined_filled_data %>%
   group_by(station_abbr) %>%
   summarise(row_count = n(), .groups = "drop") %>%
   pull(row_count) %>%
   max()
 
 # Keep only the complete stations (with max rows)
-daily_filtered <- daily_filled %>%
+daily_filtered <- combined_filled_data %>%
   group_by(station_abbr) %>%
   filter(n() == max_rows) %>%
   ungroup()
@@ -835,3 +643,125 @@ write.csv(
   "MeteoSwiss_station/all_filtered_19910101_to_20251231.csv",
   row.names = FALSE
 )
+
+# ============================================================
+# 8) Create README.md file (Improved)
+# ============================================================
+
+cat("\n", rep("=", 60), "\n")
+cat("STEP 8: Creating README.md\n")
+cat(rep("=", 60), "\n")
+
+# ---- Overall stats ----
+total_original_na <- sum(combined_summaries$original_na)
+total_filled_na <- sum(combined_summaries$filled_na)
+total_remaining_na <- sum(combined_summaries$remaining_na)
+
+overall_fill_percentage <- if(total_original_na > 0) {
+  round(total_filled_na / total_original_na * 100, 2)
+} else 100
+
+# ---- Stations table ----
+stations_table <- paste0(
+  "| Rank | Station | Distance (km) | Alt Diff (m) |\n",
+  "|------|---------|---------------|--------------|\n",
+  paste0(
+    "| ", seq_len(nrow(nearest_10_stations)),
+    " | ", nearest_10_stations$station_abbr,
+    " | ", round(nearest_10_stations$dist_km, 2),
+    " | ", round(nearest_10_stations$alt_diff_m, 2),
+    " |\n",
+    collapse = ""
+  )
+)
+
+# ---- Per-station summary table (Markdown!) ----
+summary_table <- combined_summaries %>%
+  select(station_abbr, distance_to_target_km, total_days, 
+         original_na, filled_na, fill_percentage) %>%
+  mutate(across(where(is.numeric), ~ round(., 2)))
+
+summary_md <- paste0(
+  "| Station | Dist (km) | Days | NA (orig) | Filled | Fill % |\n",
+  "|---------|-----------|------|------------|--------|--------|\n",
+  paste0(
+    "| ", summary_table$station_abbr,
+    " | ", summary_table$distance_to_target_km,
+    " | ", summary_table$total_days,
+    " | ", summary_table$original_na,
+    " | ", summary_table$filled_na,
+    " | ", summary_table$fill_percentage,
+    " |\n",
+    collapse = ""
+  )
+)
+
+# ---- README content ----
+readme_content <- paste0(
+  "# MeteoSwiss Data Processing - 10 Nearest Stations
+
+## Target Location
+- Latitude: ", target_lat, "
+- Longitude: ", target_lon, "
+- Altitude: ", target_alt, " m
+
+## Date Range
+- ", define_start_date, " to ", define_end_date, "
+- Total days: ", as.numeric(as.Date(define_end_date) - as.Date(define_start_date)) + 1, "
+
+## Nearest Stations
+", stations_table, "
+
+## Variables
+", paste0("- ", wanted_desc, collapse = "\n"), "
+
+## Unit Conversions
+- Temperature: °C → Kelvin (+273.15)
+- Wind speed: km/h → m/s
+
+## Output Files
+- **", date_range_filename, "**
+- all_stations_fill_source_report.csv
+- all_stations_filling_summary.csv
+- filtered dataset
+- individual station files
+
+## Filling Summary
+
+### Overall
+| Metric | Value |
+|--------|-------|
+| Original NA | ", total_original_na, " |
+| Filled | ", total_filled_na, " |
+| Remaining | ", total_remaining_na, " |
+| Fill % | ", overall_fill_percentage, "% |
+
+### Per Station
+", summary_md, "
+
+## Method
+Missing values are filled using nearby stations in order of distance.
+
+## Limitations
+- No temporal interpolation
+- No elevation correction
+- First-available station used (no weighting)
+
+## Data Source
+MeteoSwiss Open Government Data
+
+---
+Generated: ", format(Sys.time(), "%Y-%m-%d %H:%M:%S"), "
+"
+)
+
+# ---- Save README ----
+readme_path <- file.path(getwd(), "../MeteoSwiss_data_processing/README_download_nearest_station_ten.md")
+writeLines(readme_content, readme_path)
+cat("Saved:", readme_path, "\n")
+
+# Copy to output folder
+writeLines(readme_content, file.path(out_dir, "README.md"))
+
+cat("\nPROCESS COMPLETED SUCCESSFULLY\n")
+

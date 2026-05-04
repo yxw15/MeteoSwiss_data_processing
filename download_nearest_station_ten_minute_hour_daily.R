@@ -1,4 +1,4 @@
-setwd("/dss/dssfs02/lwp-dss-0001/pr48va/pr48va-dss-0000/yixuan/LPJ_GUESS_HYD")
+setwd("/home/yixuan/Documents/Manuscript3/Data")
 
 library(readr)
 library(dplyr)
