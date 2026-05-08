@@ -79,5 +79,5 @@ Missing values are filled using nearby stations in order of distance.
 MeteoSwiss Open Government Data
 
 ---
-Generated: 2026-05-04 13:07:43
+Generated: 2026-05-08 10:39:20
 

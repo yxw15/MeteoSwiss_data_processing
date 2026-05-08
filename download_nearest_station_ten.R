@@ -1,4 +1,4 @@
-setwd("/dss/dssfs02/lwp-dss-0001/pr48va/pr48va-dss-0000/yixuan/LPJ_GUESS_HYD/MeteoSwiss")
+setwd("~/Documents/Manuscript3")
 
 library(readr)
 library(dplyr)
@@ -640,7 +640,7 @@ daily_filtered %>%
 # Save filtered dataset
 write.csv(
   daily_filtered,
-  "MeteoSwiss_station/all_filtered_19910101_to_20251231.csv",
+  "Data/MeteoSwiss_station/all_filtered_19910101_to_20251231.csv",
   row.names = FALSE
 )
 

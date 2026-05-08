@@ -1,4 +1,4 @@
-setwd("/dss/dssfs02/lwp-dss-0001/pr48va/pr48va-dss-0000/yixuan/LPJ_GUESS_HYD")
+setwd("~/Documents/Manuscript3")
 
 library(readr)
 library(dplyr)
@@ -12,7 +12,7 @@ library(httr2)
 # OUTPUT DIRECTORY
 # ============================================================
 
-out_dir <- "MeteoSwiss_variable"
+out_dir <- "Data/MeteoSwiss_variable"
 dir.create(out_dir, showWarnings = FALSE, recursive = TRUE)
 
 # ============================================================
