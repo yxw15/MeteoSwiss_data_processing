@@ -33,7 +33,7 @@ params_url     <- "https://data.geo.admin.ch/ch.meteoschweiz.ogd-smn/ogd-smn_met
 inventory_url  <- "https://data.geo.admin.ch/ch.meteoschweiz.ogd-smn/ogd-smn_meta_datainventory.csv"
 stac_items_url <- "https://data.geo.admin.ch/api/stac/v1/collections/ch.meteoschweiz.ogd-smn/items"
 
-out_dir <- "MeteoSwiss_station"
+out_dir <- "Data/MeteoSwiss_station"
 if(!dir.exists(out_dir)) dir.create(out_dir, recursive = TRUE)
 
 # ============================================================
@@ -679,7 +679,7 @@ str(daily_csv_selected)
 
 write.csv(
   daily_csv_selected,
-  "MeteoSwiss_station/all_selected_19910101_to_20251231.csv",
+  "Data/MeteoSwiss_station/all_selected_19910101_to_20251231.csv",
   row.names = FALSE
 )
 
